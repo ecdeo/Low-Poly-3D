@@ -30,6 +30,12 @@ class Button(GUI):
         surface.blit(self.patternD, (self.x0, self.y0))
     def drawA(self, surface):
         surface.blit(self.patternA, (self.x0, self.y0))
+    def getHashable(self):
+        return (self.x0, self.y0, self.width, self.height, self.patternA, self.patternD)
+    def __hash__(self):
+        return hash(self.getHashable())
+    def __eq__(self, other):
+        return isinstance(other, Button) and self.getHashable() == other.getHashable()
 
 class TextInput(GUI):
     pass

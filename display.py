@@ -15,9 +15,9 @@ class Axis(object):
             for x, y, z in [self.vertices[edge[0]], self.vertices[edge[1]]]:
                 x, y = x * math.cos(cam.rotation[0]) - y * math.sin(cam.rotation[0]), y * math.cos(cam.rotation[0]) + x * math.sin(cam.rotation[0])
                 x, z = x * math.cos(cam.rotation[1]) - z * math.sin(cam.rotation[1]), z * math.cos(cam.rotation[1]) + x * math.sin(cam.rotation[1])
-                amp = 30
+                amp = pygame.Surface.get_width(surface) // 30
                 px, py = y * amp, - z * amp
-                points += [((pygame.Surface.get_width(surface) - 50) + int(px), 50 + int(py))]
+                points += [((pygame.Surface.get_width(surface) - 60) + int(px), 60 + int(py))]
             pygame.gfxdraw.line(surface, points[0][0], points[0][1], points[1][0], points[1][1], self.color)
 
 class Solid(object):
@@ -31,19 +31,21 @@ class Solid(object):
             points = []
             isOnScreen = False
             for x, y, z in [self.vertices[edge[0]], self.vertices[edge[1]]]:
-                x -= cam.position[0]
-                y -= cam.position[1]
-                z -= cam.position[2]
+
                 x, y = x * math.cos(cam.rotation[0]) - y * math.sin(cam.rotation[0]), y * math.cos(cam.rotation[0]) + x * math.sin(cam.rotation[0])
                 x, z = x * math.cos(cam.rotation[1]) - z * math.sin(cam.rotation[1]), z * math.cos(cam.rotation[1]) + x * math.sin(cam.rotation[1])
 
+                x -= cam.position[0]
+                y -= cam.position[1]
+                z -= cam.position[2]
+                
                 if x < 0:
                     isOnScreen = True
                 
-                depth = -1 / x if x != 0 else -2 ** 32
-                amp = 500
+                depth = -1 / x if x != 0 else -2 ** 5
+                amp = pygame.Surface.get_width(surface) * 2 // 3
                 px, py = y * depth * amp, - z * depth * amp
-                points += [(int(pygame.Surface.get_width(surface) * 3 / 5 + px), int(pygame.Surface.get_height(surface) / 2 + py))]
+                points += [(int(pygame.Surface.get_width(surface) * 0.7 + px), int(pygame.Surface.get_height(surface) / 3 + py))]
             
             if isOnScreen:
                 pygame.gfxdraw.line(surface, points[0][0], points[0][1], points[1][0], points[1][1], self.color0)

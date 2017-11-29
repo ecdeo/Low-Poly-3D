@@ -1,5 +1,5 @@
 import pygame, pygame.gfxdraw
-import sys, math
+import sys, math, datetime, json
 from gui import *
 from display import *
 
@@ -34,11 +34,16 @@ class Main(object):
         # panel
         self.panelWidth = self.width / 5
         self.panel = Panel(self.panelWidth, self.height, ORANGE)
+        
+        # tutorial
+        self.screen_tutorial = pygame.image.load('images/tutorial.png').convert_alpha()
+        pygame.transform.scale(self.screen_tutorial, (self.width, self.height))
+        
         # button
-        iconA = pygame.image.load('iconA.png')
-        iconD = pygame.image.load('iconD.png')
-        iconA1 = pygame.image.load('iconA1.png')
-        iconD1 = pygame.image.load('iconD1.png')
+        iconA = pygame.image.load('images/iconA.png').convert_alpha()
+        iconD = pygame.image.load('images/iconD.png').convert_alpha()
+        iconA1 = pygame.image.load('images/iconA1.png').convert_alpha()
+        iconD1 = pygame.image.load('images/iconD1.png').convert_alpha()
         w, h = iconA.get_size()
         h -= 3
         icon_tutorialA = iconA1.subsurface((0 * h, 0, h, h))
@@ -57,28 +62,33 @@ class Main(object):
         icon_screenD =   iconD.subsurface((6 * h, 0, h, h))
         icon_exportA =   iconA.subsurface((7 * h - 2, 0, h, h))
         icon_exportD =   iconD.subsurface((7 * h - 2, 0, h, h))
+        
+        # top pf the panel
         self.buttonWidthP = self.width / 30
         self.button_tutorial = Button(10, 10, self.buttonWidthP, self.buttonWidthP, icon_tutorialD, icon_tutorialA)
         self.button_adding =   Button(self.panelWidth - self.buttonWidthP - 10, 10, self.buttonWidthP, self.buttonWidthP, icon_plusD, icon_plusA)
         self.buttonWidthW = self.width / 20
+        
+        # bottom of screen
         c, d = self.width * 0.6, self.buttonWidthW * 1.2
         self.button_home =     Button(c - 3 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_homeD, icon_homeA)
         self.button_rotate =   Button(c - 2 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_rotateD, icon_rotateA)    
         self.button_fill =     Button(c - 1 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_fillD, icon_fillA)
-        self.button_wire =     Button(c + 0 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_wireD, icon_wireA)
-        self.button_screen =   Button(c + 1 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_screenD, icon_screenA)    
-        self.button_export =   Button(c + 2 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_exportD, icon_exportA)
+        self.button_wire =     Button(c - 1 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_wireD, icon_wireA)
+        self.button_camera =   Button(c + 0 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_screenD, icon_screenA)    
+        self.button_export =   Button(c + 1 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_exportD, icon_exportA)
 
-        self.buttonList = [
-                            self.button_tutorial,
-                            self.button_tutorial,
-                            self.button_home,
-                            self.button_rotate,
-                            self.button_fill,
-                            self.button_wire,
-                            self.button_screen, 
-                            self.button_export
-                            ]
+        # button: isDisplaying, isInMode
+        self.buttonList = {
+                            self.button_tutorial: [True, False],
+                            self.button_adding: [True, False],
+                            self.button_home: [True, False],
+                            self.button_rotate: [True, 0],
+                            self.button_fill: [True, False],
+                            self.button_wire: [False, True],
+                            self.button_camera: [True, False], 
+                            self.button_export: [True, False]
+                            }
 
     def __init__(self, width = 1440, height = 840, fps=10):
         self.width = width
@@ -89,23 +99,54 @@ class Main(object):
 
         self.grid = Grid(LIGHTGRAY, (0,0,0), unit = 1, spread = 5)
         self.axis = Axis(BLUE)
-        self.initGui()
+
         pygame.init()
 
-    def mousePressed(self, x, y):
-        pass
+    def mousePressed(self, x, y, surface):
+        if self.buttonList[self.button_tutorial][1]:
+            self.buttonList[self.button_tutorial][1] = False
 
-    def mouseMotion(self, x, y, surface):
+        if self.button_tutorial.isInBound(x, y):
+            self.buttonList[self.button_tutorial][1] = True
+
+        elif self.button_home.isInBound(x, y):
+            cam.home()
+            self.buttonList[self.button_rotate][1] == 0
+
+        elif self.button_rotate.isInBound(x, y):
+            self.buttonList[self.button_rotate][1] = (self.buttonList[self.button_rotate][1] + 1) % 4
+
+        elif self.button_fill.isInBound(x, y):
+            self.buttonList[self.button_fill][0] = not self.buttonList[self.button_fill][0]
+            self.buttonList[self.button_fill][1] = not self.buttonList[self.button_fill][1]
+            self.buttonList[self.button_wire][0] = not self.buttonList[self.button_wire][0]
+            self.buttonList[self.button_wire][1] = not self.buttonList[self.button_wire][1]
+
+        elif self.button_camera.isInBound(x, y):
+            pygame.image.save(surface, "screenshot " + str(datetime.datetime.now()) + ".jpeg")
+
+        elif self.button_export.isInBound(x,y):
+            with open('data ' + str(datetime.datetime.now()) + '.txt', 'w') as outfile:  
+                for o in solids:
+                    json.dump(o.__dict__, outfile)
+
+    def mouseMotion(self, surface):
+        x, y = self.pos
         for b in self.buttonList:
-            if b.isInBound(x, y):
-                b.drawA(surface)
+            if self.buttonList[b][0]: 
+                if b.isInBound(x, y):
+                    b.drawA(surface)
+                else: b.drawD(surface)
     
     def mouseScroll(self, x, y, button):
+        # not on the panel, zoom
         if x > self.panelWidth:
             if button == 4:
                 cam.zoom(self.displacement)
             if button == 5:
                 cam.zoom(-self.displacement)
+
+        # in the scroll zone
     
     def mouseDrag(self, x, y):
         if x > self.panelWidth:
@@ -114,74 +155,81 @@ class Main(object):
             cam.rotateXZ(angleXZ)
 
     def keyPressed(self):
-        self.displacement = self.fps / 50
-        # cam zoom
+        # when not entering text
+
+        # cam move back/forth
         if self.keys[pygame.K_q]:
             cam.forthBack(-self.displacement)
         if self.keys[pygame.K_e]:
             cam.forthBack(self.displacement)
+        
         # cam move left/right
         if self.keys[pygame.K_d]:
             cam.leftRight(self.displacement)
         if self.keys[pygame.K_a]:
             cam.leftRight(-self.displacement)
+        
         # cam move up/down
         if self.keys[pygame.K_s]:
             cam.upDown(self.displacement)
         if self.keys[pygame.K_w]:
             cam.upDown(-self.displacement)
 
+        # whe entering text
+
     def timerFired(self, dt):
-        pass
+        angle = self.displacement / 2
+        if self.buttonList[self.button_rotate][1] == 1:
+            cam.rotateXY(angle)
+        elif self.buttonList[self.button_rotate][1] == 2:
+            cam.rotateXZ(angle)
+        if self.buttonList[self.button_rotate][1] == 3:
+            cam.rotate(angle)
 
     def eventsUpdate(self, surface, clock):
         time = clock.tick(self.fps)
-        self.timerFired(time)
+        self.displacement = self.fps / 50
         self.rel = pygame.mouse.get_rel()
+        self.pos = pygame.mouse.get_pos()
         self.keys = pygame.key.get_pressed()
-        self.keyPressed()
+        if not self.buttonList[self.button_tutorial][1]:
+            self.keyPressed()
+            self.mouseMotion(surface)
+            self.timerFired(time)
         for event in pygame.event.get():
+            # not in tutorial mode
+            if not self.buttonList[self.button_tutorial][1]:
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button in [4, 5]:
+                    self.mouseScroll(*(event.pos), event.button)
+                            
+                elif event.type == pygame.MOUSEMOTION and event.buttons[0] == 1:
+                    self.mouseDrag(*(event.pos))
+            
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                self.mousePressed(*(event.pos))
-
-            elif event.type == pygame.MOUSEBUTTONDOWN and event.button in [4, 5]:
-                self.mouseScroll(*(event.pos), event.button)
-            
-            elif event.type == pygame.MOUSEMOTION and event.buttons == (0, 0, 0):
-                self.mouseMotion(*(event.pos), surface)
-            
-            elif event.type == pygame.MOUSEMOTION and event.buttons[0] == 1:
-                self.mouseDrag(*(event.pos))
-            
+                self.mousePressed(*(event.pos), surface)
             #  quitting
             elif event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 pygame.quit()
                 sys.exit()
     
-    def graphicsUpdate(self, screen):
-        self.grid.wireFrame(screen)
-        
-        for s in solids:
-            s.wireFrame(screen)
-        
-        self.axis.display(screen)
-        self.panel.draw(screen)
-        self.button_tutorial.drawD(screen)
-        self.button_adding.drawD(screen)
-        self.button_home.drawD(screen)
-        self.button_rotate.drawD(screen)
-        self.button_fill.drawD(screen)
-        self.button_wire.drawD(screen)
-        self.button_screen.drawD(screen)
-        self.button_export.drawD(screen)
+    def graphicsUpdate(self, surface):
+        if self.buttonList[self.button_tutorial][1]:
+            surface.blit(self.screen_tutorial, (0, 0))
+        else:
+            self.grid.wireFrame(surface)
+            
+            for s in solids:
+                s.wireFrame(surface)
+            
+            self.axis.display(surface)
+            self.panel.draw(surface)
+
     
     def run(self):
         clock = pygame.time.Clock()
         screen = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption(self.title)
-
-        # stores all the keys currently being held down
-        
+        self.initGui()
 
         while True:
             screen.fill(self.bgColor)
