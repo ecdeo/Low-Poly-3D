@@ -1,12 +1,20 @@
 import pygame, sys, math
 
+BLACK = (0, 0, 0)
+LIGHTGRAY = (200, 200, 200)
+YELLOW = (251, 221, 51)
+BLUE = (100, 217, 239)
+
 class Cam(object):
     # position: tuple of camera position (x, y, z)
     # rotation: angle of rotation on XY plane and XZ plane
-    def __init__(self, position = (0, 0, 0), rotation = (0,0)):
+    def __init__(self, position = (8, 2, 10), rotation = (-0.2,-1)):
         self.position = list(position)
         self.rotation = list(rotation)
-    def zoom(self, keys, displacement):
+    def home(self):
+        self.position = list((8, 2, 10))
+        self.rotation = list((-0.2,-1))
+    def zoom(self, keys, displacement, surface):
         if keys[pygame.K_q]:
             self.position[0] -= displacement
         if keys[pygame.K_e]:
@@ -19,9 +27,9 @@ class Cam(object):
             self.position[1] -= displacement
 
     def upDown(self, keys, displacement):
-        if keys[pygame.K_w]:
-            self.position[2] += displacement
         if keys[pygame.K_s]:
+            self.position[2] += displacement
+        if keys[pygame.K_w]:
             self.position[2] -= displacement
 
     def rotateXY(self, mouse, angleXY):
@@ -31,15 +39,30 @@ class Cam(object):
         if mouse[0]:
             self.rotation[1] -= angleXZ
     
-    def update(self, fps, keys, mouse, rel):
+    def update(self, fps, surface, keys, mouse, rel):
         displacement = fps / 50
         angleXY, angleXZ = rel[0] / 200, rel[1] / 200
 
-        cam.zoom(keys, displacement)
+        cam.zoom(keys, displacement, surface)
         cam.leftRight(keys, displacement)
         cam.upDown(keys, displacement)
         cam.rotateXY(mouse, angleXY)
         cam.rotateXZ(mouse, angleXZ)
+
+class Axis(object):
+    def __init__(self):
+        self.vertices = [(0, 0, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)]
+        self.edges = [(0, 1), (0, 2), (0, 3)]
+    def display(self, surface):
+        for edge in self.edges:
+            points = []
+            for x, y, z in [self.vertices[edge[0]], self.vertices[edge[1]]]:
+                x, y = x * math.cos(cam.rotation[0]) - y * math.sin(cam.rotation[0]), y * math.cos(cam.rotation[0]) + x * math.sin(cam.rotation[0])
+                x, z = x * math.cos(cam.rotation[1]) - z * math.sin(cam.rotation[1]), z * math.cos(cam.rotation[1]) + x * math.sin(cam.rotation[1])
+                amp = 30
+                px, py = y * amp, - z * amp
+                points += [((pygame.Surface.get_width(surface) - 50) + int(px), 50 + int(py))]
+            pygame.draw.line(surface, BLUE, points[0], points[1], 2)
 
 class Solid(object):
     def __init__(self, color, center):
@@ -47,21 +70,27 @@ class Solid(object):
         self.color0 = color
         # center
         self.cx, self.cy, self.cz = center
-    def render(self, surface):
+    def wireFrame(self, surface):
         for edge in self.edges:
             points = []
+            isOnScreen = False
             for x, y, z in [self.vertices[edge[0]], self.vertices[edge[1]]]:
-                x, y = x * math.cos(cam.rotation[0]) - y * math.sin(cam.rotation[0]), y * math.cos(cam.rotation[0]) + x * math.sin(cam.rotation[0])
-                x, z = x * math.cos(cam.rotation[1]) - z * math.sin(cam.rotation[1]), z * math.cos(cam.rotation[1]) + x * math.sin(cam.rotation[1])
                 x -= cam.position[0]
                 y -= cam.position[1]
                 z -= cam.position[2]
+                x, y = x * math.cos(cam.rotation[0]) - y * math.sin(cam.rotation[0]), y * math.cos(cam.rotation[0]) + x * math.sin(cam.rotation[0])
+                x, z = x * math.cos(cam.rotation[1]) - z * math.sin(cam.rotation[1]), z * math.cos(cam.rotation[1]) + x * math.sin(cam.rotation[1])
+
+                if x < 0:
+                    isOnScreen = True
                 
-                depth = -1 / x if x != 0 else -1
-                amp = 600
+                depth = -1 / x if x != 0 else -2 ** 32
+                amp = 500
                 px, py = y * depth * amp, - z * depth * amp
-                points += [(360 + int(px), 240 + int(py))]
-            pygame.draw.line(surface, (0, 0, 0), points[0], points[1], 1)
+                points += [(pygame.Surface.get_width(surface) * 3 / 5 + int(px), pygame.Surface.get_height(surface) / 2 + int(py))]
+            
+            if isOnScreen:
+                pygame.draw.line(surface, self.color0, points[0], points[1], 2)
     # rotation: tuple of angle of rotation on XY plane and XZ plane
     def rotate(self, rotation = (0,0)):
         self.rotateXY(rotation)
@@ -103,7 +132,7 @@ class Prism(Solid):
     # height: the height of the prism
     def __init__(self, color, center, numSides, sideLen, height):
         # get color and center
-        super(Prism, self).__init__(color, center)
+        super().__init__(color, center)
         
         # side length of the base, height
         self.sideLen = sideLen
@@ -111,14 +140,15 @@ class Prism(Solid):
         
         self.numSides = numSides
         
-        # get a list of the coordinates of vertices
-        # get a list of connecting vertices that form an edge
-        # major of calculation happens here
+        # calculate a list of the coordinates of vertices
+        # calculate a list of connecting vertices that form an edge
+        self.vertices = []
+        self.edges = []
+
         z0, z1 = self.cz - self.height / 2, self.cz + self.height / 2
         angle = 2 * math.pi / self.numSides
         radius = self.sideLen / 2 / math.sin(angle / 2)
-        self.vertices = []
-        self.edges = []
+
         for i in range(self.numSides):
             x, y = self.cx + radius * math.cos(angle * i), self.cy + radius * math.sin(angle * i)
             vert = [(x, y, z0), (x, y, z1)]
@@ -139,21 +169,16 @@ class Pyramid(Solid):
         self.height = height
         
         self.numSides = numSides
-        
-        # get a list of the coordinates of vertices
-        # get a list of connecting vertices that form an edge
-        # major of calculation happens here
-        
+
+        # calculate a list of the coordinates of vertices
+        # calculate a list of connecting vertices that form an edge
         self.vertices = []
         self.edges = []
-        # get a list of the coordinates of vertices
-        # get a list of connecting vertices that form an edge
-        # major of calculation happens here
+
         z0, z1 = self.cz - self.height / 2, self.cz + self.height / 2
         angle = 2 * math.pi / self.numSides
         radius = self.sideLen / 2 / math.sin(angle / 2)
-        self.vertices = []
-        self.edges = []
+
         for i in range(self.numSides):
             x, y = self.cx + radius * math.cos(angle * i), self.cy + radius * math.sin(angle * i)
             vert = [(x, y, z0)]
@@ -177,8 +202,9 @@ class Polyhedron(Solid):
         self.numFaces = numFaces
         if self.numFaces not in [4, 6, 8, 12, 20]:
             raise Exception("not a regular polyhedron")
-        # get a list of the coordinates of vertices
-        # get a list of connecting vertices that form an edge
+        
+        # calculate a list of the coordinates of vertices
+        # calculate a list of connecting vertices that form an edge
         shapes = {4: "Tetrahedron", 6: "Cube", 8: "Octahedron", 12: "Dodecahedron", 20: "Icosahedron"}
 
         self.vertices, self.edges = eval("self." + shapes[numFaces] + "()")
@@ -193,6 +219,7 @@ class Polyhedron(Solid):
             z = self.cz + z * self.sideLen / math.sqrt(2) / 2
             self.vertices[i] = x, y, z
         return self.vertices, self.edges
+    
     def Cube(self):
         self.vertices = [(1, 1, 1), (1, -1, 1), (-1, -1, 1), (-1, 1, 1), (1, 1, -1), (1, -1, -1), (-1, -1, -1), (-1, 1, -1)]
         self.edges = [(0, 1), (1, 2), (2, 3), (3, 0), (4, 5), (5, 6), (6, 7), (7, 4), (0, 4), (1, 5), (2, 6), (3, 7)]
@@ -214,6 +241,7 @@ class Polyhedron(Solid):
             self.vertices[i] = x, y, z
         return self.vertices, self.edges
     def Dodecahedron(self):
+        # golden ratio and its inverse
         phi = (1 + 5 ** 0.5) / 2
         phiI = (5 ** 0.5 - 1) / 2
 
@@ -239,6 +267,7 @@ class Polyhedron(Solid):
             self.vertices[i] = x, y, z
         return self.vertices, self.edges
     def Icosahedron(self):
+        # golden ratio
         phi = (1 + 5 ** 0.5) / 2
         self.vertices = [(0, 1, phi), (0, -1, phi), (0, 1, -phi), (0, -1, -phi), 
                          (1, phi, 0), (-1, phi, 0), (1, -phi, 0), (-1, -phi, 0),
@@ -258,14 +287,87 @@ class Polyhedron(Solid):
             self.vertices[i] = x, y, z
         return self.vertices, self.edges
 
-black = (0,0,0)
-center = (0,0,0)
-prism = Prism(black, (0,3,0), 9, 1, 2)
-pyramid = Pyramid(black, (0, -3, 0), 5, 2, 2)
-tetrahedron = Polyhedron(black, (0,0,0), 12, 1)
-cam = Cam(position = (10,0,0), rotation = (0, 0))
+class Sphere(Solid):
+    # takes in right polyhedrons: Tetrahedron, Cube, Octahedron, Dodecahedron, Icosahedron
+    # numLatitude: number of latitude lines the sphere has from +z to -z, exclude two poles
+    # numLongitude: number of longitude lines the sphere has
+    def __init__(self, color, center, r, numLatitude, numLongitude):
+        # get color and center
+        super().__init__(color, center)
+        
+        # the radius of the sphere
+        self.r = r
+        
+        # side length of a surface
+        self.numLatitude = numLatitude
+        self.numLongitude = numLongitude
 
+        # calculate a list of the coordinates of vertices
+        # calculate a list of connecting vertices that form an edge
+        self.vertices = []
+        self.edges = []
 
+        northPole = (self.cx, self.cy, self.cz + self.r)
+        southPole = (self.cx, self.cy, self.cz - self.r)
+        self.vertices.append(northPole)
+        self.edges.extend([(0, k + 1) for k in range(self.numLongitude)])
+        
+        # the angle to +z axis (spherical coordinate)
+        phi = math.pi / self.numLatitude
+        # when projected on x, y plane, the angle to +x axis (spherical coordinate)
+        theta = math.pi * 2 / self.numLongitude
+
+        for i in range(self.numLatitude):
+            z = self.cz + self.r * math.cos(phi * i)
+            for j in range(self.numLongitude):
+                x, y = self.cx + self.r * math.sin(phi * i) * math.cos(theta * j), self.cy - self.r * math.sin(phi * i) * math.sin(theta * j)
+                self.vertices.append((x, y, z))
+                self.edges.append((i * self.numLongitude + j + 1, i * self.numLongitude + 1 + (j + 1) % self.numLongitude))
+                self.edges.append((i * self.numLongitude + j + 1, min(self.numLongitude * self.numLatitude + 1, (i + 1) * self.numLongitude + j + 1)))
+        self.vertices.append(southPole)
+
+class Custom(Solid):
+    def __init__(self, color, center, numFaces, sideLen):
+        # get color and center
+        super().__init__(color, center)
+
+        # get a list of the coordinates of vertices from user input
+        # get a list of connecting vertices that form an edge from user input
+        self.vertices = []
+        self.edges = []
+
+class Grid(Solid):
+    # unit: unit length of one grid
+    # spread: total length of the whole grid
+    def __init__(self, color, center, unit, spread):
+        # get color and center
+        super().__init__(color, center)
+        # side length of the base, height
+        self.unit = unit
+        self.spread = spread
+        
+        self.numCell = self.spread // self.unit
+        r = self.numCell * self.unit
+        
+        # calculate a list of the coordinates of vertices
+        # calculate a list of connecting vertices that form an edge
+        self.vertices = []
+        self.edges = []
+        for i in range(0, self.numCell * 2 + 1):
+            v = [(r - i * self.unit, r, 0), (r - i * self.unit, -r, 0), (r, r - i * self.unit, 0), (-r, r - i * self.unit, 0)]
+            self.vertices.extend(v)
+            self.edges.extend([(4 * i, 4 * i + 1), (4 * i + 2, 4 * i + 3)])
+
+grid = Grid(LIGHTGRAY, (0,0,0), unit = 1, spread = 5)
+cam = Cam()
+axis = Axis()
+
+solids = [
+        Prism(BLACK, (0,3,0), 9, 1, 2),
+        Pyramid(BLACK, (0, -3, 0), 5, 2, 2),
+        Polyhedron(BLACK, (0,0,1), 8, math.sqrt(2)),
+        Sphere(BLACK, (0,0,0), 1, 10, 10),
+        ]
 
 # https://qwewy.gitbooks.io/pygame-module-manual/content/chapter1/the-mainloop.html
 class Main(object):
@@ -273,16 +375,19 @@ class Main(object):
         self.width = width
         self.height = height
         self.fps = fps
-        self.bgColor = (255, 255, 255)
+        self.bgColor = (225, 225, 225)
         self.cam = Cam((5,5,5))
         pygame.init()
     def eventsUpdate(self):
         pass
     
     def graphicsUpdate(self, screen):
-        prism.render(screen)
-        pyramid.render(screen)
-        tetrahedron.render(screen)
+        grid.wireFrame(screen)
+        
+        for s in solids:
+            s.wireFrame(screen)
+        
+        axis.display(screen)
 
     
     def run(self):
@@ -299,7 +404,7 @@ class Main(object):
             mouse = pygame.mouse.get_pressed()
             rel = pygame.mouse.get_rel()
 
-            self.cam.update(self.fps, keys, mouse, rel)
+            self.cam.update(self.fps, screen, keys, mouse, rel)
 
             for event in pygame.event.get():
                 #  quitting
