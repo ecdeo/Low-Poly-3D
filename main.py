@@ -1,9 +1,6 @@
-import pygame, sys, math
-
-BLACK = (0, 0, 0)
-LIGHTGRAY = (200, 200, 200)
-YELLOW = (251, 221, 51)
-BLUE = (100, 217, 239)
+import pygame, pygame.gfxdraw
+import sys, math
+import gui
 
 class Cam(object):
     # position: tuple of camera position (x, y, z)
@@ -11,43 +8,24 @@ class Cam(object):
     def __init__(self, position = (8, 2, 10), rotation = (-0.2,-1)):
         self.position = list(position)
         self.rotation = list(rotation)
+    
     def home(self):
         self.position = list((8, 2, 10))
         self.rotation = list((-0.2,-1))
-    def zoom(self, keys, displacement, surface):
-        if keys[pygame.K_q]:
-            self.position[0] -= displacement
-        if keys[pygame.K_e]:
-            self.position[0] += displacement
-
-    def leftRight(self, keys, displacement):
-        if keys[pygame.K_d]:
-            self.position[1] += displacement
-        if keys[pygame.K_a]:
-            self.position[1] -= displacement
-
-    def upDown(self, keys, displacement):
-        if keys[pygame.K_s]:
-            self.position[2] += displacement
-        if keys[pygame.K_w]:
-            self.position[2] -= displacement
-
-    def rotateXY(self, mouse, angleXY):
-        if mouse[0]:
-            self.rotation[0] += angleXY
-    def rotateXZ(self, mouse, angleXZ):
-        if mouse[0]:
-            self.rotation[1] -= angleXZ
     
-    def update(self, fps, surface, keys, mouse, rel):
-        displacement = fps / 50
-        angleXY, angleXZ = rel[0] / 200, rel[1] / 200
+    def zoom(self, displacement):
+        self.position[0] += displacement
 
-        cam.zoom(keys, displacement, surface)
-        cam.leftRight(keys, displacement)
-        cam.upDown(keys, displacement)
-        cam.rotateXY(mouse, angleXY)
-        cam.rotateXZ(mouse, angleXZ)
+    def leftRight(self, displacement):
+        self.position[1] += displacement
+
+    def upDown(self, displacement):
+        self.position[2] += displacement
+
+    def rotateXY(self, angleXY):
+        self.rotation[0] -= angleXY
+    def rotateXZ(self, angleXZ):
+        self.rotation[1] -= angleXZ
 
 class Axis(object):
     def __init__(self):
@@ -62,7 +40,7 @@ class Axis(object):
                 amp = 30
                 px, py = y * amp, - z * amp
                 points += [((pygame.Surface.get_width(surface) - 50) + int(px), 50 + int(py))]
-            pygame.draw.line(surface, BLUE, points[0], points[1], 2)
+            pygame.gfxdraw.line(surface, points[0][0], points[0][1], points[1][0], points[1][1], BLUE)
 
 class Solid(object):
     def __init__(self, color, center):
@@ -87,10 +65,10 @@ class Solid(object):
                 depth = -1 / x if x != 0 else -2 ** 32
                 amp = 500
                 px, py = y * depth * amp, - z * depth * amp
-                points += [(pygame.Surface.get_width(surface) * 3 / 5 + int(px), pygame.Surface.get_height(surface) / 2 + int(py))]
+                points += [(int(pygame.Surface.get_width(surface) * 3 / 5 + px), int(pygame.Surface.get_height(surface) / 2 + py))]
             
             if isOnScreen:
-                pygame.draw.line(surface, self.color0, points[0], points[1], 2)
+                pygame.gfxdraw.line(surface, points[0][0], points[0][1], points[1][0], points[1][1], self.color0)
     # rotation: tuple of angle of rotation on XY plane and XZ plane
     def rotate(self, rotation = (0,0)):
         self.rotateXY(rotation)
@@ -358,14 +336,17 @@ class Grid(Solid):
             self.vertices.extend(v)
             self.edges.extend([(4 * i, 4 * i + 1), (4 * i + 2, 4 * i + 3)])
 
-grid = Grid(LIGHTGRAY, (0,0,0), unit = 1, spread = 5)
-cam = Cam()
-axis = Axis()
 
+BLACK = (0, 0, 0)
+LIGHTGRAY = (200, 200, 200)
+YELLOW = (251, 221, 51)
+BLUE = (100, 217, 239)
+panel = gui.Panel(game.getWidthHeight[0] / 5, game.getWidthHeight[1], )
+cam = Cam()
 solids = [
-        Prism(BLACK, (0,3,0), 9, 1, 2),
+        Prism(BLACK, (0,3,0), 9, 0.5, 2),
         Pyramid(BLACK, (0, -3, 0), 5, 2, 2),
-        Polyhedron(BLACK, (0,0,1), 8, math.sqrt(2)),
+        Polyhedron(BLACK, (3,0,0), 8, math.sqrt(2)),
         Sphere(BLACK, (0,0,0), 1, 10, 10),
         ]
 
@@ -376,42 +357,99 @@ class Main(object):
         self.height = height
         self.fps = fps
         self.bgColor = (225, 225, 225)
-        self.cam = Cam((5,5,5))
+        self.title = "LowPoly 3D"
+
+        self.grid = Grid(LIGHTGRAY, (0,0,0), unit = 1, spread = 5)
+        self.axis = Axis()
         pygame.init()
-    def eventsUpdate(self):
+
+    def getWidthHeight(self):
+        return self.width, self.height
+
+    def mousePressed(self, x, y):
         pass
+
+    def mouseScroll(self, x, y):
+        pass
+
+    def mouseMotion(self, x, y):
+        pass
+
+    def mouseDrag(self, x, y):
+        if x >= self.width / 5:
+            angleXY, angleXZ = self.rel[0] / 200, self.rel[1] / 200
+            cam.rotateXY(angleXY)
+            cam.rotateXZ(angleXZ)
+
+    def keyPressed(self):
+        displacement = self.fps / 50
+        # cam zoom
+        if self.keys[pygame.K_q]:
+            cam.zoom(-displacement)
+        if self.keys[pygame.K_e]:
+            cam.zoom(displacement)
+        # cam move left/right
+        if self.keys[pygame.K_d]:
+            cam.leftRight(displacement)
+        if self.keys[pygame.K_a]:
+            cam.leftRight(-displacement)
+        # cam move up/down
+        if self.keys[pygame.K_s]:
+            cam.upDown(displacement)
+        if self.keys[pygame.K_w]:
+            cam.upDown(-displacement)
+
+    def timerFired(self, dt):
+        pass
+
+    def eventsUpdate(self, surface, clock):
+        time = clock.tick(self.fps)
+        self.timerFired(time)
+        self.rel = pygame.mouse.get_rel()
+        self.keys = pygame.key.get_pressed()
+        self.keyPressed()
+        for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                self.mousePressed(*(event.pos))
+
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button in [4, 5]:
+                self.mouseScroll()
+            
+            elif event.type == pygame.MOUSEMOTION and event.buttons == (0, 0, 0):
+                self.mouseMotion(*(event.pos))
+            
+            elif event.type == pygame.MOUSEMOTION and event.buttons[0] == 1:
+                self.mouseDrag(*(event.pos))
+            
+            #  quitting
+            elif event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                pygame.quit()
+                sys.exit()
     
     def graphicsUpdate(self, screen):
-        grid.wireFrame(screen)
+        self.grid.wireFrame(screen)
         
         for s in solids:
             s.wireFrame(screen)
         
-        axis.display(screen)
+        self.axis.display(screen)
 
     
     def run(self):
         clock = pygame.time.Clock()
         screen = pygame.display.set_mode((self.width, self.height))
+        pygame.display.set_caption(self.title)
+
+        # stores all the keys currently being held down
+        
+
         while True:
-            time = clock.tick(self.fps)
             screen.fill(self.bgColor)
+
             self.graphicsUpdate(screen)
+            self.eventsUpdate(screen, clock)
             
             pygame.display.flip()
-
-            keys = pygame.key.get_pressed()
-            mouse = pygame.mouse.get_pressed()
-            rel = pygame.mouse.get_rel()
-
-            self.cam.update(self.fps, screen, keys, mouse, rel)
-
-            for event in pygame.event.get():
-                #  quitting
-                if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                    pygame.quit()
-                    sys.exit()
-            
 
 def main():
     game = Main()
