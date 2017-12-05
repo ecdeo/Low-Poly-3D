@@ -1,24 +1,30 @@
-import pygame, pygame.gfxdraw
+import pygame
 import sys, math
+
 from camera import Cam
 
 cam = Cam()
 
 class Axis(object):
+    # color: a tuple of colors of x, y, z axis
     def __init__(self, color):
         self.vertices = [(0, 0, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)]
         self.edges = [(0, 1), (0, 2), (0, 3)]
-        self.color = color
-    def display(self, surface):
-        for edge in self.edges:
+        self.color = list(color)
+    def display(self, surface, perspective):
+        for i in range(len(self.edges)):
+            edge = self.edges[i]
             points = []
             for x, y, z in [self.vertices[edge[0]], self.vertices[edge[1]]]:
                 x, y = x * math.cos(cam.rotation[0]) - y * math.sin(cam.rotation[0]), y * math.cos(cam.rotation[0]) + x * math.sin(cam.rotation[0])
                 x, z = x * math.cos(cam.rotation[1]) - z * math.sin(cam.rotation[1]), z * math.cos(cam.rotation[1]) + x * math.sin(cam.rotation[1])
                 amp = pygame.Surface.get_width(surface) // 30
-                px, py = y * amp, - z * amp
-                points += [((pygame.Surface.get_width(surface) - 60) + int(px), 60 + int(py))]
-            pygame.gfxdraw.line(surface, points[0][0], points[0][1], points[1][0], points[1][1], self.color)
+                if perspective: 
+                    px, py = y * amp, - z * amp
+                else:
+                    px, py = y * amp, - (z - x) * amp
+                points += [[(pygame.Surface.get_width(surface) - 60) + int(px), 60 + int(py)]]
+            pygame.draw.aaline(surface, self.color[i], points[0], points[1], True)
 
 class Solid(object):
     def __init__(self, color, center):
@@ -26,7 +32,7 @@ class Solid(object):
         self.color0 = color
         # center
         self.cx, self.cy, self.cz = center
-    def wireFrame(self, surface):
+    def wireFrame(self, surface, perspective):
         for edge in self.edges:
             points = []
             isOnScreen = False
@@ -42,47 +48,66 @@ class Solid(object):
                 if x < 0:
                     isOnScreen = True
                 
-                depth = -1 / x if x != 0 else -2 ** 5
-                amp = pygame.Surface.get_width(surface) * 2 // 3
-                px, py = y * depth * amp, - z * depth * amp
+                amp = pygame.Surface.get_width(surface) * 2 // 3 * cam.zoom()
+                if perspective: 
+                    depth = -1 / x if x != 0 else -2 ** 5
+                    px, py = y * depth * amp, - z * depth * amp
+                else:
+                    px, py = y * amp / 10 * math.sqrt(2), - (z - x) * amp / 10
                 points += [(int(pygame.Surface.get_width(surface) * 0.7 + px), int(pygame.Surface.get_height(surface) / 3 + py))]
             
             if isOnScreen:
-                pygame.gfxdraw.line(surface, points[0][0], points[0][1], points[1][0], points[1][1], self.color0)
+                pygame.draw.aaline(surface, self.color0, points[0], points[1], True)
+    
     # rotation: tuple of angle of rotation on XY plane and XZ plane
     def rotate(self, rotation = (0,0)):
-        self.rotateXY(rotation)
-        self.rotateXZ(rotation)
+        self.rotateXY(rotation[0])
+        self.rotateXZ(rotation[1])
     def rotateXY(self, rotation):
         for i in range(len(self.vertices)):
             x, y, z = self.vertices[i]
-            x, y = x * math.cos(rotation[0]) - y * math.sin(rotation[0]), y * math.cos(rotation[0]) + x * math.sin(rotation[0])
+            x, y = x * math.cos(rotation) - y * math.sin(rotation), y * math.cos(rotation) + x * math.sin(rotation)
             self.vertices[i] = x, y, z
     def rotateXZ(self, rotation):
         for i in range(len(self.vertices)):
             x, y, z = self.vertices[i]
-            x, z = x * math.cos(rotation[1]) - z * math.sin(rotation[1]), z * math.cos(rotation[1]) + x * math.sin(rotation[1])
+            x, z = x * math.cos(rotation) - z * math.sin(rotation), z * math.cos(rotation) + x * math.sin(rotation)
             self.vertices[i] = x, y, z
+    
     # scaling: tuple of scale factor for x, y, z dimension
     def scale(self, scaling = (1,1,1)):
-        self.scaleX(scaling)
-        self.scaleY(scaling)
-        self.scaleZ(scaling)
+        self.scaleX(scaling[0])
+        self.scaleY(scaling[1])
+        self.scaleZ(scaling[2])
     def scaleX(self, scaling):
         for i in range(len(self.vertices)):
             x, y, z = self.vertices[i]
-            x = self.cx + (x - self.cx) * scaling[0]
+            x = self.cx + (x - self.cx) * scaling
             self.vertices[i] = x, y, z
     def scaleY(self, scaling):
         for i in range(len(self.vertices)):
             x, y, z = self.vertices[i]
-            y = self.cy + (y - self.cy) * scaling[1]
+            y = self.cy + (y - self.cy) * scaling
             self.vertices[i] = x, y, z
     def scaleZ(self, scaling):
         for i in range(len(self.vertices)):
             x, y, z = self.vertices[i]
-            z = self.cz + (z - self.cz) * scaling[2]
+            z = self.cz + (z - self.cz) * scaling
             self.vertices[i] = x, y, z
+
+    # translation
+    def translate(self, translation = (0,0,0)):
+        self.translateX(self, translation[0])
+        self.translateY(self, translation[1])
+        self.translateZ(self, translation[2])
+    def translateX(self, translation):
+        self.centerX += translation
+    def translateY(self, translation):
+        self.centerY += translation
+    def translateZ(self, translation):
+        self.centerZ += translation
+
+
 
 class Prism(Solid):
     # numSides: the number of sides the base of the solid has
