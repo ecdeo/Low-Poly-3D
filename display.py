@@ -45,19 +45,15 @@ class Solid(object):
                 y -= cam.position[1]
                 z -= cam.position[2]
                 
-                if x < 0:
-                    isOnScreen = True
-                
                 amp = pygame.Surface.get_width(surface) * 2 // 3 * cam.zoom()
                 if perspective: 
                     depth = -1 / x if x != 0 else -2 ** 5
                     px, py = y * depth * amp, - z * depth * amp
                 else:
                     px, py = y * amp / 10 * math.sqrt(2), - (z - x) * amp / 10
-                points += [(int(pygame.Surface.get_width(surface) * 0.7 + px), int(pygame.Surface.get_height(surface) / 3 + py))]
+                points += [(int(pygame.Surface.get_width(surface) * 0.6 + px), int(pygame.Surface.get_height(surface) * 0.4 + py))]
             
-            if isOnScreen:
-                pygame.draw.aaline(surface, self.color0, points[0], points[1], True)
+            pygame.draw.aaline(surface, self.color0, points[0], points[1], True)
     
     # rotation: tuple of angle of rotation on XY plane and XZ plane
     def rotate(self, rotation = (0,0)):
@@ -66,12 +62,16 @@ class Solid(object):
     def rotateXY(self, rotation):
         for i in range(len(self.vertices)):
             x, y, z = self.vertices[i]
+            x, y, z = x - self.cx, y - self.cy, z - self.cz
             x, y = x * math.cos(rotation) - y * math.sin(rotation), y * math.cos(rotation) + x * math.sin(rotation)
+            x, y, z = x + self.cx, y + self.cy, z + self.cz
             self.vertices[i] = x, y, z
     def rotateXZ(self, rotation):
         for i in range(len(self.vertices)):
             x, y, z = self.vertices[i]
+            x, y, z = x - self.cx, y - self.cy, z - self.cz
             x, z = x * math.cos(rotation) - z * math.sin(rotation), z * math.cos(rotation) + x * math.sin(rotation)
+            x, y, z = x + self.cx, y + self.cy, z + self.cz
             self.vertices[i] = x, y, z
     
     # scaling: tuple of scale factor for x, y, z dimension
@@ -107,8 +107,29 @@ class Solid(object):
     def translateZ(self, translation):
         self.centerZ += translation
 
-
-
+class Grid(Solid):
+    # unit: unit length of one grid
+    # spread: total length of the whole grid
+    def __init__(self, color, center, unit, spread):
+        # get color and center
+        super().__init__(color, center)
+        # side length of the base, height
+        self.unit = unit
+        self.spread = spread
+        
+        self.numCell = self.spread // self.unit
+        r = self.numCell * self.unit
+        
+        # calculate a list of the coordinates of vertices
+        # calculate a list of connecting vertices that form an edge
+        self.vertices = []
+        self.edges = []
+        for i in range(0, self.numCell * 2 + 1):
+            v = [(r - i * self.unit, r, 0), (r - i * self.unit, -r, 0), (r, r - i * self.unit, 0), (-r, r - i * self.unit, 0)]
+            self.vertices.extend(v)
+            self.edges.extend([(4 * i, 4 * i + 1), (4 * i + 2, 4 * i + 3)])
+    def expand(self, expansion):
+        pass
 class Prism(Solid):
     # numSides: the number of sides the base of the solid has
     # sideLen: the length of each side of the base
@@ -309,6 +330,12 @@ class Sphere(Solid):
                 self.edges.append((i * self.numLongitude + j + 1, min(self.numLongitude * self.numLatitude + 1, (i + 1) * self.numLongitude + j + 1)))
         self.vertices.append(southPole)
 
+class Surface3D(Solid):
+    pass
+
+class Curve3D(Solid):
+    pass
+
 class Custom(Solid):
     def __init__(self, color, center, numFaces, sideLen):
         # get color and center
@@ -318,25 +345,3 @@ class Custom(Solid):
         # get a list of connecting vertices that form an edge from user input
         self.vertices = []
         self.edges = []
-
-class Grid(Solid):
-    # unit: unit length of one grid
-    # spread: total length of the whole grid
-    def __init__(self, color, center, unit, spread):
-        # get color and center
-        super().__init__(color, center)
-        # side length of the base, height
-        self.unit = unit
-        self.spread = spread
-        
-        self.numCell = self.spread // self.unit
-        r = self.numCell * self.unit
-        
-        # calculate a list of the coordinates of vertices
-        # calculate a list of connecting vertices that form an edge
-        self.vertices = []
-        self.edges = []
-        for i in range(0, self.numCell * 2 + 1):
-            v = [(r - i * self.unit, r, 0), (r - i * self.unit, -r, 0), (r, r - i * self.unit, 0), (-r, r - i * self.unit, 0)]
-            self.vertices.extend(v)
-            self.edges.extend([(4 * i, 4 * i + 1), (4 * i + 2, 4 * i + 3)])

@@ -11,7 +11,7 @@ class Panel(object):
 
 class Button(object):
     # x0, y0: the upper left corner
-    def __init__(self, x0, y0, width, height, patternD, patternA, label = "", labelColor = (0,0,0)):
+    def __init__(self, x0, y0, width, height, patternD, patternA, label = "", labelFont = "font/Ubuntu-L.ttf", labelSize = 20, labelColor = (0,0,0)):
         self.x0 = x0
         self.y0 = y0
         self.width = width
@@ -21,7 +21,10 @@ class Button(object):
         self.patternA = pygame.transform.scale(patternA, (int(self.width), int(self.height)))
         
         self.label = label
+        self.labelFont = labelFont
+        self.labelSize = labelSize
         self.labelColor = labelColor
+        self.font = pygame.font.Font(self.labelFont, self.labelSize)
 
         self.active = False
     
@@ -34,12 +37,10 @@ class Button(object):
         return result
 
     def draw(self, surface):
-        labelSize = surface.get_height() / 50
         if self.active:
             surface.blit(self.patternA, (self.x0, self.y0))
             
-            font = pygame.font.Font("font/Ubuntu-L.ttf", int(labelSize))
-            label = font.render(self.label, True, self.labelColor)
+            label = self.font.render(self.label, True, self.labelColor)
             w, h = label.get_size()
             surface.blit(label,(self.x0 + self.width / 2 - w / 2, int(self.y0 - h)))
         
@@ -54,13 +55,10 @@ class Button(object):
 
     def __eq__(self, other):
         return isinstance(other, Button) and self.getHashable() == other.getHashable()
-
-class TextInput(object):
-    pass
     
 class Scroll(object):
     # content: a surface of the content
-    def __init__(self, x0, y0, windowWidth, windowHeight, content, color = [(130, 130, 130), (200, 200, 200)]):
+    def __init__(self, x0, y0, windowWidth, windowHeight, content, color = [(160, 160, 160), (200, 200, 200)]):
         self.x0 = x0
         self.y0 = y0
         self.winWidth = windowWidth
@@ -139,7 +137,41 @@ class Scroll(object):
         self.scrollBarX(surface)
         self.scrollBarY(surface)
         
-
-
 class DropDownMenu(object):
+    # options: list of options in str
+    def __init__(self, x0, y0, width, optionHeight, options, textColor = (0, 0, 0), bgColor = [(255, 255, 255), (200, 200, 200)], textFont = "font/Ubuntu-L.ttf", textSize = 20):
+        self.x0 = x0
+        self.y0 = y0
+        self.width = width
+        self.optionHeight = optionHeight
+        self.optionList = options
+        self.number = len(options)
+        self.isActive = [False] * self.number
+        self.textColor = textColor
+        self.bgColor = bgColor
+        self.textFont = textFont
+        self.textSize = textSize
+        self.font = pygame.font.Font(self.textFont, self.textSize)
+    def isInBound(self, x, y):
+        selected = None
+        for i in range(self.number):
+            result =  min(max(x, self.x0), self.x0 + self.width) == x and min(max(y, self.y0 + i * self.optionHeight), self.y0 + (i + 1) * self.optionHeight) == y
+            if result:
+                self.isActive[i] = True
+                selected = i
+            else:
+                self.isActive[i] = False
+        return selected
+    def draw(self, surface):
+        for i in range(self.number):
+            if self.isActive[i]:
+                pygame.draw.rect(surface, self.bgColor[1], (self.x0, self.y0 + i * self.optionHeight, self.width, self.optionHeight))
+            else:
+                pygame.draw.rect(surface, self.bgColor[0], (self.x0, self.y0 + i * self.optionHeight, self.width, self.optionHeight))
+            label = self.font.render(self.optionList[i], True, self.textColor, self.bgColor)
+            w, h = label.get_size()
+            surface.blit(label,(self.x0 + 5, int(self.y0 + i * self.optionHeight + self.optionHeight / 2 - h / 2)))
+
+class TextInput(object):
     pass
+

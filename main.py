@@ -1,8 +1,12 @@
 import pygame
-import sys, math, datetime, json
+import tkinter as tk
+import sys, math, json, datetime
+from tkinter.filedialog import askopenfilename, asksaveasfilename
+
 
 from gui import *
 from display import *
+from card import *
 
 """
 move back and forth: q, e
@@ -22,20 +26,15 @@ RED = (255, 110, 110)
 ORANGE = (255, 220, 150)
 
 solids = [
-        Polyhedron(BLACK, (0,3,0), 6, 1),
-        Sphere(BLACK, (0,0,0), 1, 10, 10),
-        Polyhedron(BLACK, (0,-3,0), 6, 1),
+        Sphere(BLACK, (0,0,1), 1, 10, 10),
         ]
 
-
-# https://qwewy.gitbooks.io/pygame-module-manual/content/chapter1/the-mainloop.html
+# barebone from: https://qwewy.gitbooks.io/pygame-module-manual/content/chapter1/the-mainloop.html
 class Main(object):
     def initGui(self):
         # panel
         self.panelWidth = self.width / 5
         self.panel = Panel(self.panelWidth, self.height, ORANGE)
-
-
         
         # tutorial
         self.screen_tutorial = pygame.image.load('images/tutorial.png').convert_alpha()
@@ -66,29 +65,38 @@ class Main(object):
         icon_confirmD =     pygame.image.load('images/confirmD.png').convert_alpha()
         icon_cancelA =      pygame.image.load('images/cancelA.png').convert_alpha()
         icon_cancelD =      pygame.image.load('images/cancelD.png').convert_alpha()
-###################################
-        self.test = pygame.transform.scale(icon_tutorialA, (int(self.panelWidth), 1500))
-###################################
 
+        icon_xyplaneA =     pygame.image.load('images/xyplaneA.png').convert_alpha()
+        icon_xyplaneD =     pygame.image.load('images/xyplaneD.png').convert_alpha()
+        icon_xzplaneA =     pygame.image.load('images/xzplaneA.png').convert_alpha()
+        icon_xzplaneD =     pygame.image.load('images/xzplaneD.png').convert_alpha()
+        icon_yzplaneA =     pygame.image.load('images/yzplaneA.png').convert_alpha()
+        icon_yzplaneD =     pygame.image.load('images/yzplaneD.png').convert_alpha()
+        
         # top pf the panel
         self.buttonWidthP = self.width / 30
-        self.button_tutorial = Button(10, 20, self.buttonWidthP, self.buttonWidthP, icon_tutorialD, icon_tutorialA, "tutorial")
-        self.button_add =   Button(self.panelWidth - self.buttonWidthP - 10, 20, self.buttonWidthP, self.buttonWidthP, icon_addD, icon_addA, "add object")
-        self.button_import =   Button(self.panelWidth - 2 * self.buttonWidthP - 2 * 10, 20, self.buttonWidthP, self.buttonWidthP, icon_importD, icon_importA, "import")
+        self.button_tutorial =  Button(10, 20, self.buttonWidthP, self.buttonWidthP, icon_tutorialD, icon_tutorialA, "tutorial")
+        self.button_add =       Button(self.panelWidth - self.buttonWidthP - 10, 20, self.buttonWidthP, self.buttonWidthP, icon_addD, icon_addA, "add object")
+        self.button_import =    Button(self.panelWidth - 2 * self.buttonWidthP - 2 * 10, 20, self.buttonWidthP, self.buttonWidthP, icon_importD, icon_importA, "import")
 
         # in the panel
-        self.button_confirm =  Button(10, 100, self.buttonWidthP, self.buttonWidthP, icon_confirmD, icon_confirmA)
-        self.button_cancel =   Button(self.panelWidth - self.buttonWidthP - 10, 100, self.buttonWidthP, self.buttonWidthP, icon_cancelD, icon_cancelA)
+        self.button_confirm =   Button(10, 100, self.buttonWidthP, self.buttonWidthP, icon_confirmD, icon_confirmA)
+        self.button_cancel =    Button(self.panelWidth - self.buttonWidthP - 10, 100, self.buttonWidthP, self.buttonWidthP, icon_cancelD, icon_cancelA)
         
         # bottom of screen
         self.buttonWidthW = self.width / 20
         c, d = self.width * 0.6, self.buttonWidthW * 1.2
-        self.button_home =          Button(c - 3 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_homeD, icon_homeA, "home")
-        self.button_rotate =        Button(c - 2 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_rotateD, icon_rotateA, "auto rotate")    
-        self.button_perspective =   Button(c - 1 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_perspectiveD, icon_perspectiveA, "perspective")
-        self.button_axonometric =          Button(c - 1 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_axonometricD, icon_axonometricA, "axonometric")
-        self.button_screenshot =        Button(c + 0 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_screenshotD, icon_screenshotA, "screenshot")    
-        self.button_export =        Button(c + 1 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_exportD, icon_exportA, "export")
+        self.button_home =        Button(c - 4 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_homeD, icon_homeA, "home")
+        self.button_xyplane =     Button(c - 3 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_xyplaneD, icon_xyplaneA, "look at xy plane")
+        self.button_xzplane =     Button(c - 2 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_xzplaneD, icon_xzplaneA, "look at xz plane")
+        self.button_yzplane =     Button(c - 1 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_yzplaneD, icon_yzplaneA, "look at yz plane")
+        self.button_rotate =      Button(c - 0 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_rotateD, icon_rotateA, "auto rotate")    
+        self.button_perspective = Button(c + 1 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_perspectiveD, icon_perspectiveA, "perspective")
+        self.button_axonometric = Button(c + 1 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_axonometricD, icon_axonometricA, "axonometric")
+        self.button_screenshot =  Button(c + 2 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_screenshotD, icon_screenshotA, "screenshot")    
+        self.button_export =      Button(c + 3 * d, self.height - d, self.buttonWidthW, self.buttonWidthW, icon_exportD, icon_exportA, "export")
+        
+
 
         # button: isDisplaying, isInMode
         self.buttonList = {
@@ -96,6 +104,9 @@ class Main(object):
                             self.button_add: [True, False],
                             self.button_import: [True, False],
                             self.button_home: [True, False],
+                            self.button_xyplane: [True, False],
+                            self.button_xzplane: [True, False],
+                            self.button_yzplane: [True, False],
                             self.button_rotate: [True, False],
                             self.button_perspective: [False, True],
                             self.button_axonometric: [True, False],
@@ -104,7 +115,13 @@ class Main(object):
                             }
 
         # scroll
+        self.test = pygame.transform.scale(icon_tutorialA, (int(self.panelWidth), 1500))
         self.scroll = Scroll(0, 80, self.panelWidth, self.height - 80, self.test)
+
+        # drop down menu
+        options = ["Prism", "Pyramid", "Polyhedron", "Sphere", "3D Surface", "3D Curve", "Custom"]
+        self.dropDownMenu = DropDownMenu(self.panelWidth - self.buttonWidthP - 10, 80, 200, 50, options)
+        self.isDroppingDown = False
 
     def __init__(self, width = 1440, height = 840, fps=10):
         self.width = width
@@ -129,6 +146,13 @@ class Main(object):
             cam.home(self.buttonList[self.button_perspective][1])
             self.buttonList[self.button_rotate][1] == 0
 
+        elif self.button_xyplane.isInBound(x, y):
+            cam.xyPlane(self.buttonList[self.button_perspective][1])
+        elif self.button_xzplane.isInBound(x, y):
+            cam.xzPlane(self.buttonList[self.button_perspective][1])
+        elif self.button_yzplane.isInBound(x, y):
+            cam.yzPlane(self.buttonList[self.button_perspective][1])
+
         elif self.button_rotate.isInBound(x, y):
             self.buttonList[self.button_rotate][1] = not self.buttonList[self.button_rotate][1]
 
@@ -137,15 +161,42 @@ class Main(object):
             self.buttonList[self.button_perspective][1] = not self.buttonList[self.button_perspective][1]
             self.buttonList[self.button_axonometric][0] = not self.buttonList[self.button_axonometric][0]
             self.buttonList[self.button_axonometric][1] = not self.buttonList[self.button_axonometric][1]
-            cam.home(self.buttonList[self.button_perspective][1])
+            cam.home(self.buttmp0tonList[self.button_perspective][1])
 
         elif self.button_screenshot.isInBound(x, y):
-            pygame.image.save(surface, "screenshot " + str(datetime.datetime.now()) + ".jpeg")
+            filename = asksaveasfilename(initialdir = "/", defaultextension= ".jpg",
+                                            initialfile="screenshot " + str(datetime.datetime.now()))
+            if filename is not None:
+                pygame.image.save(surface, filename)
 
         elif self.button_export.isInBound(x,y):
-            with open('data ' + str(datetime.datetime.now()) + '.txt', 'w') as outfile:  
-                for o in solids:
-                    json.dump(o.__dict__, outfile)
+            filename = asksaveasfilename(initialdir = "/", defaultextension= ".txt",
+                                            initialfile="data " + str(datetime.datetime.now()))
+            if filename is not None:
+                with open(filename, 'w') as outfile:  
+                    for o in solids:
+                        json.dump(o.__dict__, outfile)
+        
+        elif self.button_add.isInBound(x, y):
+            self.isDroppingDown = not self.isDroppingDown
+        
+        elif self.dropDownMenu.isInBound(x, y) != None:
+            self.isDroppingDown = False
+            selection = self.dropDownMenu.isInBound(x, y)
+            if selection == 0:
+                solids.append(Sphere(BLACK, (3,0,1), 1, 10, 10))
+            elif selection == 1:
+                pass
+            elif selection == 2:
+                pass
+            elif selection == 3:
+                pass
+            elif selection == 4:
+                pass
+            elif selection == 5:
+                pass
+            elif selection == 6:
+                pass
 
     def mouseMotion(self, surface):
         x, y = self.pos
@@ -154,6 +205,7 @@ class Main(object):
                 b.isInBound(x, y)
                 b.draw(surface)
         self.scroll.isInScrollBarY(x, y)
+        self.dropDownMenu.isInBound(x, y)
     
     def mouseScroll(self, x, y, button):
         # not on the panel, zoom
@@ -184,12 +236,6 @@ class Main(object):
 
     def keyPressed(self):
         # when not entering text
-
-        # cam move back/forth
-        if self.keys[pygame.K_q]:
-            cam.forthBack(-self.displacement)
-        if self.keys[pygame.K_e]:
-            cam.forthBack(self.displacement)
         
         # cam move left/right
         if self.keys[pygame.K_d]:
@@ -248,8 +294,13 @@ class Main(object):
             self.axis.display(surface, self.buttonList[self.button_perspective][1])
             self.panel.draw(surface)
             self.scroll.draw(surface)
+
+            if self.isDroppingDown:
+                self.dropDownMenu.draw(surface)
     
     def run(self):
+
+        
         clock = pygame.time.Clock()
         screen = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption(self.title)
@@ -262,6 +313,7 @@ class Main(object):
             self.eventsUpdate(screen, clock)
             
             pygame.display.flip()
+
 
 def main():
     game = Main()
