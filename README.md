@@ -12,6 +12,7 @@ run the main.py file. Click the light bulb icon at the top-left corner and follo
 ## install pygame
 
 use pip3
+
 """
 pip3 install pygame
 """
@@ -25,5 +26,6 @@ Try the following as custom input. Copy and pasting each list (excluding what's 
 
 """
 vertices: 
+
 edges: 
 """
