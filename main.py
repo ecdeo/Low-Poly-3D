@@ -25,15 +25,28 @@ BLUE = (100, 200, 239)
 RED = (255, 110, 110)
 ORANGE = (255, 220, 150)
 
-solids = [
-        Sphere(BLACK, (0,0,1), 1, 10, 10),
-        ]
+solids = []
+cards = []
 
 # barebone from: https://qwewy.gitbooks.io/pygame-module-manual/content/chapter1/the-mainloop.html
 class Main(object):
-    def initGui(self):
+    def __init__(self, width = 1440, height = 840, fps=10):
+        self.width = width
+        self.height = height
+        self.fps = fps
+        self.bgColor = GRAY
+        self.title = "Wire Frame 3D"
+
+        self.grid = Grid(LIGHTGRAY, (0,0,0), 1, 5)
+        #self.axis = Axis((BLUE, RED, GREEN))
+        self.axis = Axis(((0,0,255), (0,255,255), (255,0,255)))
+        
+        pygame.init()
+
+    def initGui(self, surface): 
+        pygame.mouse.set_cursor(*pygame.cursors.diamond)
         # panel
-        self.panelWidth = self.width / 5
+        self.panelWidth = self.width / 4
         self.panel = Panel(self.panelWidth, self.height, ORANGE)
         
         # tutorial
@@ -50,6 +63,12 @@ class Main(object):
 
         icon_homeA =        pygame.image.load('images/homeA.png').convert_alpha()
         icon_homeD =        pygame.image.load('images/homeD.png').convert_alpha()
+        icon_xyplaneA =     pygame.image.load('images/xyplaneA.png').convert_alpha()
+        icon_xyplaneD =     pygame.image.load('images/xyplaneD.png').convert_alpha()
+        icon_xzplaneA =     pygame.image.load('images/xzplaneA.png').convert_alpha()
+        icon_xzplaneD =     pygame.image.load('images/xzplaneD.png').convert_alpha()
+        icon_yzplaneA =     pygame.image.load('images/yzplaneA.png').convert_alpha()
+        icon_yzplaneD =     pygame.image.load('images/yzplaneD.png').convert_alpha()
         icon_rotateA =      pygame.image.load('images/rotateA.png').convert_alpha()
         icon_rotateD =      pygame.image.load('images/rotateD.png').convert_alpha() 
         icon_perspectiveA = pygame.image.load('images/perspectiveA.png').convert_alpha()
@@ -61,27 +80,17 @@ class Main(object):
         icon_exportA =      pygame.image.load('images/exportA.png').convert_alpha()
         icon_exportD =      pygame.image.load('images/exportD.png').convert_alpha()
         
-        icon_confirmA =     pygame.image.load('images/confirmA.png').convert_alpha()
-        icon_confirmD =     pygame.image.load('images/confirmD.png').convert_alpha()
-        icon_cancelA =      pygame.image.load('images/cancelA.png').convert_alpha()
-        icon_cancelD =      pygame.image.load('images/cancelD.png').convert_alpha()
+        self.icon_confirmA =     pygame.image.load('images/confirmA.png').convert_alpha()
+        self.icon_confirmD =     pygame.image.load('images/confirmD.png').convert_alpha()
+        self.icon_cancelA =      pygame.image.load('images/cancelA.png').convert_alpha()
+        self.icon_cancelD =      pygame.image.load('images/cancelD.png').convert_alpha()
 
-        icon_xyplaneA =     pygame.image.load('images/xyplaneA.png').convert_alpha()
-        icon_xyplaneD =     pygame.image.load('images/xyplaneD.png').convert_alpha()
-        icon_xzplaneA =     pygame.image.load('images/xzplaneA.png').convert_alpha()
-        icon_xzplaneD =     pygame.image.load('images/xzplaneD.png').convert_alpha()
-        icon_yzplaneA =     pygame.image.load('images/yzplaneA.png').convert_alpha()
-        icon_yzplaneD =     pygame.image.load('images/yzplaneD.png').convert_alpha()
         
         # top pf the panel
         self.buttonWidthP = self.width / 30
         self.button_tutorial =  Button(10, 20, self.buttonWidthP, self.buttonWidthP, icon_tutorialD, icon_tutorialA, "tutorial")
         self.button_add =       Button(self.panelWidth - self.buttonWidthP - 10, 20, self.buttonWidthP, self.buttonWidthP, icon_addD, icon_addA, "add object")
         self.button_import =    Button(self.panelWidth - 2 * self.buttonWidthP - 2 * 10, 20, self.buttonWidthP, self.buttonWidthP, icon_importD, icon_importA, "import")
-
-        # in the panel
-        self.button_confirm =   Button(10, 100, self.buttonWidthP, self.buttonWidthP, icon_confirmD, icon_confirmA)
-        self.button_cancel =    Button(self.panelWidth - self.buttonWidthP - 10, 100, self.buttonWidthP, self.buttonWidthP, icon_cancelD, icon_cancelA)
         
         # bottom of screen
         self.buttonWidthW = self.width / 20
@@ -115,25 +124,19 @@ class Main(object):
                             }
 
         # scroll
-        self.test = pygame.transform.scale(icon_tutorialA, (int(self.panelWidth), 1500))
-        self.scroll = Scroll(0, 80, self.panelWidth, self.height - 80, self.test)
+        self.scroll_length = 3
+        self.scroll_content = pygame.Surface((int(self.panelWidth), int(self.scroll_length)))
+        self.scroll_content.fill(ORANGE)
+        self.scroll = Scroll(0, 80, self.panelWidth, self.height - 80, self.scroll_content)
 
         # drop down menu
         options = ["Prism", "Pyramid", "Polyhedron", "Sphere", "3D Surface", "3D Curve", "Custom"]
         self.dropDownMenu = DropDownMenu(self.panelWidth - self.buttonWidthP - 10, 80, 200, 50, options)
         self.isDroppingDown = False
 
-    def __init__(self, width = 1440, height = 840, fps=10):
-        self.width = width
-        self.height = height
-        self.fps = fps
-        self.bgColor = GRAY
-        self.title = "Wire Frame 3D"
+        # text entering
+        self.textentering = False    
 
-        self.grid = Grid(LIGHTGRAY, (0,0,0), unit = 1, spread = 5)
-        self.axis = Axis((BLUE, RED, GREEN))
-
-        pygame.init()
 
     def mousePressed(self, x, y, surface):
         if self.buttonList[self.button_tutorial][1]:
@@ -161,7 +164,7 @@ class Main(object):
             self.buttonList[self.button_perspective][1] = not self.buttonList[self.button_perspective][1]
             self.buttonList[self.button_axonometric][0] = not self.buttonList[self.button_axonometric][0]
             self.buttonList[self.button_axonometric][1] = not self.buttonList[self.button_axonometric][1]
-            cam.home(self.buttmp0tonList[self.button_perspective][1])
+            cam.home(self.buttonList[self.button_perspective][1])
 
         elif self.button_screenshot.isInBound(x, y):
             filename = asksaveasfilename(initialdir = "/", defaultextension= ".jpg",
@@ -176,27 +179,70 @@ class Main(object):
                 with open(filename, 'w') as outfile:  
                     for o in solids:
                         json.dump(o.__dict__, outfile)
-        
+
         elif self.button_add.isInBound(x, y):
             self.isDroppingDown = not self.isDroppingDown
         
-        elif self.dropDownMenu.isInBound(x, y) != None:
+        elif self.isDroppingDown:
             self.isDroppingDown = False
             selection = self.dropDownMenu.isInBound(x, y)
             if selection == 0:
-                solids.append(Sphere(BLACK, (3,0,1), 1, 10, 10))
+                c = PrismCard(self.panelWidth, cards, self.icon_confirmD, self.icon_confirmA, self.icon_cancelD, self.icon_cancelA)
+                cards.append(c)
+                self.scroll_length = c.getBottom()
+                self.scroll_content = pygame.Surface((int(self.panelWidth), int(self.scroll_length)))
+                self.scroll_content.fill(ORANGE)
+                self.scroll = Scroll(0, 80, self.panelWidth, self.height - 80, self.scroll_content)
+                
             elif selection == 1:
-                pass
+                c = PyramidCard(self.panelWidth, cards, self.icon_confirmD, self.icon_confirmA, self.icon_cancelD, self.icon_cancelA)
+                cards.append(c)
+                self.scroll_length = c.getBottom()
+                self.scroll_content = pygame.Surface((int(self.panelWidth), int(self.scroll_length)))
+                self.scroll_content.fill(ORANGE)
+                self.scroll = Scroll(0, 80, self.panelWidth, self.height - 80, self.scroll_content)
+            
             elif selection == 2:
-                pass
+                c = PolyhedronCard(self.panelWidth, cards, self.icon_confirmD, self.icon_confirmA, self.icon_cancelD, self.icon_cancelA)
+                cards.append(c)
+                self.scroll_length = c.getBottom()
+                self.scroll_content = pygame.Surface((int(self.panelWidth), int(self.scroll_length)))
+                self.scroll_content.fill(ORANGE)
+                self.scroll = Scroll(0, 80, self.panelWidth, self.height - 80, self.scroll_content)
             elif selection == 3:
-                pass
+                c = SphereCard(self.panelWidth, cards, self.icon_confirmD, self.icon_confirmA, self.icon_cancelD, self.icon_cancelA)
+                cards.append(c)
+                self.scroll_length = c.getBottom()
+                self.scroll_content = pygame.Surface((int(self.panelWidth), int(self.scroll_length)))
+                self.scroll_content.fill(ORANGE)
+                self.scroll = Scroll(0, 80, self.panelWidth, self.height - 80, self.scroll_content)
             elif selection == 4:
                 pass
             elif selection == 5:
                 pass
             elif selection == 6:
                 pass
+            
+            self.scroll.setDisplayY(cards[-1].getTop())
+        else:
+            for i in range(len(cards)):
+                poped = cards[i].inputUpdate(self.scroll, x, y, solids, i)
+                if poped:
+                    cards.pop(i)
+                    p = i
+                    break
+
+            if poped:
+                if cards == []:
+                    self.scroll_length = 3
+                else:
+                    for i in range(p, len(cards)):
+                        cards[i].updateTop(cards, i)
+                    self.scroll_length = cards[-1].getBottom()
+                
+                self.scroll_content = pygame.Surface((int(self.panelWidth), int(self.scroll_length)))
+                self.scroll_content.fill(ORANGE)
+                self.scroll = Scroll(0, 80, self.panelWidth, self.height - 80, self.scroll_content)
 
     def mouseMotion(self, surface):
         x, y = self.pos
@@ -206,6 +252,8 @@ class Main(object):
                 b.draw(surface)
         self.scroll.isInScrollBarY(x, y)
         self.dropDownMenu.isInBound(x, y)
+        for i in range(len(cards)):
+            cards[i].hovering(self.scroll, x, y)
     
     def mouseScroll(self, x, y, button):
         # not on the panel, zoom
@@ -290,21 +338,23 @@ class Main(object):
             
             for s in solids:
                 s.wireFrame(surface, self.buttonList[self.button_perspective][1])
+
             
             self.axis.display(surface, self.buttonList[self.button_perspective][1])
             self.panel.draw(surface)
             self.scroll.draw(surface)
-
+            
+            for c in cards:
+                c.draw(self.scroll_content)
             if self.isDroppingDown:
                 self.dropDownMenu.draw(surface)
     
     def run(self):
 
-        
         clock = pygame.time.Clock()
         screen = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption(self.title)
-        self.initGui()
+        self.initGui(screen)
 
         while True:
             screen.fill(self.bgColor)

@@ -1,9 +1,14 @@
-import pygame
-import sys, math
+import pygame, pygame.gfxdraw
+import sys, math, platform
 
 from camera import Cam
 
 cam = Cam()
+
+if platform.system == "Windows":
+    gfx = False
+else:
+    gfx = True # use gfxdraw or not
 
 class Axis(object):
     # color: a tuple of colors of x, y, z axis
@@ -24,12 +29,16 @@ class Axis(object):
                 else:
                     px, py = y * amp, - (z - x) * amp
                 points += [[(pygame.Surface.get_width(surface) - 60) + int(px), 60 + int(py)]]
-            pygame.draw.aaline(surface, self.color[i], points[0], points[1], True)
+            
+            if gfx:
+                pygame.gfxdraw.line(surface, points[0][0], points[0][1], points[1][0], points[1][1], self.color[i])
+            else:
+                pygame.draw.aaline(surface, self.color[i], points[0], points[1], True)
 
 class Solid(object):
     def __init__(self, color, center):
         # the brightest color on the object
-        self.color0 = color
+        self.color = color
         # center
         self.cx, self.cy, self.cz = center
     def wireFrame(self, surface, perspective):
@@ -53,7 +62,10 @@ class Solid(object):
                     px, py = y * amp / 10 * math.sqrt(2), - (z - x) * amp / 10
                 points += [(int(pygame.Surface.get_width(surface) * 0.6 + px), int(pygame.Surface.get_height(surface) * 0.4 + py))]
             
-            pygame.draw.aaline(surface, self.color0, points[0], points[1], True)
+            if gfx:
+                pygame.gfxdraw.line(surface, points[0][0], points[0][1], points[1][0], points[1][1], self.color)
+            else:
+                pygame.draw.aaline(surface, self.color, points[0], points[1], True)
     
     # rotation: tuple of angle of rotation on XY plane and XZ plane
     def rotate(self, rotation = (0,0)):
@@ -106,6 +118,8 @@ class Solid(object):
         self.centerY += translation
     def translateZ(self, translation):
         self.centerZ += translation
+    def changeColor(self, color):
+        self.color = color
 
 class Grid(Solid):
     # unit: unit length of one grid
@@ -130,11 +144,12 @@ class Grid(Solid):
             self.edges.extend([(4 * i, 4 * i + 1), (4 * i + 2, 4 * i + 3)])
     def expand(self, expansion):
         pass
+
 class Prism(Solid):
     # numSides: the number of sides the base of the solid has
     # sideLen: the length of each side of the base
     # height: the height of the prism
-    def __init__(self, color, center, numSides, sideLen, height):
+    def __init__(self, color = (0,0,0), center = (0,0,0), numSides = 3, sideLen = 1, height = 1):
         # get color and center
         super().__init__(color, center)
         
@@ -164,7 +179,7 @@ class Pyramid(Solid):
     # numSides: the number of sides the base of the solid has
     # sideLen: the length of each side of the base
     # height: the height of the pyramid
-    def __init__(self, color, center, numSides, sideLen, height):
+    def __init__(self, color = (0,0,0), center = (0,0,0), numSides = 3, sideLen = 1, height = 1):
         # get color and center
         super().__init__(color, center)
         
@@ -195,7 +210,7 @@ class Polyhedron(Solid):
     # only takes in right polyhedrons: Tetrahedron, Cube, Octahedron, Dodecahedron, Icosahedron
     # numSides: the number of sides the base of the solid has
     # sideLen: the length of each side of the base
-    def __init__(self, color, center, numFaces, sideLen):
+    def __init__(self, color = (0,0,0), center = (0,0,0), numFaces = 12, sideLen = 1):
         # get color and center
         super().__init__(color, center)
         
@@ -295,7 +310,7 @@ class Sphere(Solid):
     # takes in right polyhedrons: Tetrahedron, Cube, Octahedron, Dodecahedron, Icosahedron
     # numLatitude: number of latitude lines the sphere has from +z to -z, exclude two poles
     # numLongitude: number of longitude lines the sphere has
-    def __init__(self, color, center, r, numLatitude, numLongitude):
+    def __init__(self, color = (0,0,0), center = (0,0,0), r = 1, numLatitude = 10, numLongitude = 10):
         # get color and center
         super().__init__(color, center)
         
@@ -331,7 +346,11 @@ class Sphere(Solid):
         self.vertices.append(southPole)
 
 class Surface3D(Solid):
-    pass
+    def __init__(self, color, function, xmin = 5, xmax = 5, xstep = 1, ymin = 5, ymax = 5, ystep = 1):
+        pass
+
+
+
 
 class Curve3D(Solid):
     pass

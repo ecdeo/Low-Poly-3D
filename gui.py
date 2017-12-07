@@ -58,7 +58,7 @@ class Button(object):
     
 class Scroll(object):
     # content: a surface of the content
-    def __init__(self, x0, y0, windowWidth, windowHeight, content, color = [(160, 160, 160), (200, 200, 200)]):
+    def __init__(self, x0, y0, windowWidth, windowHeight, content, color = [(160, 160, 160, 128), (200, 200, 200, 128)]):
         self.x0 = x0
         self.y0 = y0
         self.winWidth = windowWidth
@@ -68,9 +68,28 @@ class Scroll(object):
         self.color = color
         self.barColor = color[0]
         self.barWidth = 8
+        
         # in display
         self.displayX = 0
         self.displayY = 0
+    
+    def getDisplayX(self):
+        return self.displayX
+    
+    def getDisplayY(self):
+        return self.displayY
+
+    def setDisplayX(self, x):
+        if self.conWidth <= self.winWidth:
+            self.displayX = 0
+        else:
+            self.displayX = min(max(x, 0), self.conWidth - self.winWidth)
+    
+    def setDisplayY(self, y):
+        if self.conHeight <= self.winHeight:
+            self.displayY = 0
+        else:
+            self.displayY = min(max(y, 0), self.conHeight - self.winHeight)
     
     def isInWindow(self, x, y):
         return min(max(x, self.x0), self.x0 + self.winWidth) == x and min(max(y, self.y0), self.y0 + self.winHeight) == y
@@ -119,7 +138,9 @@ class Scroll(object):
         if self.conWidth <= self.winWidth:
             pass
         else:
-            pygame.draw.rect(surface, self.barColor, (self.startX, self.y0 + self.winHeight - self.barWidth, self.lengthX, self.barWidth))
+            scrollBarX = pygame.Surface((int(self.lengthX), int(self.barWidth)), pygame.SRCALPHA)
+            scrollBarX.fill(self.barColor)
+            surface.blit(scrollBarX, (self.startX, self.y0 + self.winHeight - self.barWidth, self.lengthX, self.barWidth))
 
     def scrollBarY(self, surface):
         self.lengthY = self.winHeight * self.winHeight / self.conHeight
@@ -127,7 +148,9 @@ class Scroll(object):
         if self.conHeight <= self.winHeight:
             pass
         else:
-            pygame.draw.rect(surface, self.barColor, (self.x0 + self.winWidth - self.barWidth, self.startY, self.barWidth, self.lengthY))
+            scrollBarY = pygame.Surface((int(self.barWidth), int(self.lengthY)), pygame.SRCALPHA)
+            scrollBarY.fill(self.barColor)
+            surface.blit(scrollBarY, (self.x0 + self.winWidth - self.barWidth, self.startY, self.barWidth, self.lengthY))
 
     def contentInDisplay(self, surface):
         surface.blit(self.content, (self.x0, self.y0), (self.displayX, self.displayY, self.winWidth, self.winHeight))
@@ -172,6 +195,43 @@ class DropDownMenu(object):
             w, h = label.get_size()
             surface.blit(label,(self.x0 + 5, int(self.y0 + i * self.optionHeight + self.optionHeight / 2 - h / 2)))
 
-class TextInput(object):
-    pass
+#class TextInput(object):
+    #pass
+class TextEntryBox(object):
+    def __init__(self, x, y, w, h, initialText = ""):
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        self.initialText = initialText
+        self.color = (255, 255, 255)
+        self.empty = True
+        self.textSize = 16
+        self.font = "font/Ubuntu-L.ttf"
+
+    def isInBound(self, x, y, textentering):
+        result = min(max(x, self.x), self.x + self.win) == x and min(max(y, self.y), self.y + self.w) == y
+        if result:
+            textentering = True
+            self.empty = False
+            self.color = (0, 255, 255)
+        else:
+            textentering = False
+            self.color = (255, 255, 255)
+        return textentering, result
+
+    def isIllegal(self, legal):
+        if legal:
+            self.color = (255, 255, 255)
+        else:
+            self.color = (255, 255, 255)
+    def draw(self, surface):
+        if self.empty:
+            self.TEXT =  pygame.font.Font(self.font, 16)
+            self.TEXT.render(self.initialText, True, (200,200,200), (255,255,255))
+        pygame.draw.line(surface, self.color, (self.x + self.h, self.y), (self.x + self.h, self.y + self.w), 1)
+    def getBounds(self):
+        return self.x, self.y, self.w, self.h
+
+
 

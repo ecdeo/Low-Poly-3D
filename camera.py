@@ -2,7 +2,7 @@ import pygame
 import sys, math
 
 
-CamDefaultA = [(3, 0, 3), (-math.pi / 4, math.pi / 8)]
+CamDefaultA = [(3, 0, 5), (-math.pi / 4, math.pi / 8)]
 CamDefaultP = [(10, 0, 1), (-0.3, -0.3)]
 class Cam(object):
     # position: tuple of camera position (x, y, z)
