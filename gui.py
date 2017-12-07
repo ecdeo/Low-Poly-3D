@@ -204,32 +204,33 @@ class TextEntryBox(object):
         self.w = w
         self.h = h
         self.initialText = initialText
-        self.color = (255, 255, 255)
+        self.color = (0, 0, 0)
         self.empty = True
-        self.textSize = 16
+        self.textSize = 20
         self.font = "font/Ubuntu-L.ttf"
+        self.TEXT =  pygame.font.Font(self.font, self.textSize)
 
-    def isInBound(self, x, y, textentering):
-        result = min(max(x, self.x), self.x + self.win) == x and min(max(y, self.y), self.y + self.w) == y
+    def isInBound(self, x, y):
+        result = min(max(x, self.x), self.x + self.w) == x and min(max(y, self.y), self.y + self.h) == y
         if result:
-            textentering = True
             self.empty = False
             self.color = (0, 255, 255)
         else:
-            textentering = False
-            self.color = (255, 255, 255)
-        return textentering, result
+            self.color = (0, 0, 0)
+        return result
 
-    def isIllegal(self, legal):
-        if legal:
-            self.color = (255, 255, 255)
+    def isLegal(self, legal):
+        if not legal:
+            self.color = (255, 0, 0)
         else:
-            self.color = (255, 255, 255)
+            self.color = (0, 0, 0)
+    
     def draw(self, surface):
         if self.empty:
-            self.TEXT =  pygame.font.Font(self.font, 16)
-            self.TEXT.render(self.initialText, True, (200,200,200), (255,255,255))
-        pygame.draw.line(surface, self.color, (self.x + self.h, self.y), (self.x + self.h, self.y + self.w), 1)
+            text = self.TEXT.render(self.initialText, True, (200,200,200), (255,255,255))
+            surface.blit(text, (self.x, self.y))
+        pygame.draw.line(surface, self.color, (self.x, self.y + self.w), (self.x + self.h, self.y + self.w), 1)
+    
     def getBounds(self):
         return self.x, self.y, self.w, self.h
 

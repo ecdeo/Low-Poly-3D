@@ -42,6 +42,7 @@ class Solid(object):
         # center
         self.cx, self.cy, self.cz = center
     def wireFrame(self, surface, perspective):
+        self.get()
         for edge in self.edges:
             points = []
             isOnScreen = False
@@ -118,8 +119,23 @@ class Solid(object):
         self.centerY += translation
     def translateZ(self, translation):
         self.centerZ += translation
-    def changeColor(self, color):
-        self.color = color
+    def changeR(self, r):
+        self.color = r, self.color[1], self.color[2]
+    def changeG(self, g):
+        self.color = self.color[0], g, self.color[2]
+    def changeB(self, b):
+        self.color = self.color[0], self.color[1], b
+    def changeCX(self, x):
+        self.cx = x
+        self.get()
+    def changeCY(self, y):
+        self.cy = y
+        self.get()
+    def changeCZ(self, z):
+        self.cz = z
+        self.get()
+
+
 
 class Grid(Solid):
     # unit: unit length of one grid
@@ -132,12 +148,13 @@ class Grid(Solid):
         self.spread = spread
         
         self.numCell = self.spread // self.unit
-        r = self.numCell * self.unit
         
+    def get(self):
         # calculate a list of the coordinates of vertices
         # calculate a list of connecting vertices that form an edge
         self.vertices = []
         self.edges = []
+        r = self.numCell * self.unit
         for i in range(0, self.numCell * 2 + 1):
             v = [(r - i * self.unit, r, 0), (r - i * self.unit, -r, 0), (r, r - i * self.unit, 0), (-r, r - i * self.unit, 0)]
             self.vertices.extend(v)
@@ -163,7 +180,7 @@ class Prism(Solid):
         # calculate a list of connecting vertices that form an edge
         self.vertices = []
         self.edges = []
-
+    def get(self):
         z0, z1 = self.cz - self.height / 2, self.cz + self.height / 2
         angle = 2 * math.pi / self.numSides
         radius = self.sideLen / 2 / math.sin(angle / 2)
@@ -174,6 +191,12 @@ class Prism(Solid):
             self.vertices.extend(vert)
             conn = [(2 * i, 2 * i + 1), (2 * i, (2 * i + 2) % (self.numSides * 2)), (2 * i + 1, (2 * i + 3) % (self.numSides * 2))]
             self.edges.extend(conn)
+    def setNumSides(self, x):
+        self.numSides = x
+    def setHeight(self, x):
+        self.height = x
+    def setSideLen(self, x):
+        self.sideLen = x
 
 class Pyramid(Solid):
     # numSides: the number of sides the base of the solid has
@@ -188,7 +211,7 @@ class Pyramid(Solid):
         self.height = height
         
         self.numSides = numSides
-
+    def get(self):
         # calculate a list of the coordinates of vertices
         # calculate a list of connecting vertices that form an edge
         self.vertices = []
@@ -224,9 +247,9 @@ class Polyhedron(Solid):
         
         # calculate a list of the coordinates of vertices
         # calculate a list of connecting vertices that form an edge
-        shapes = {4: "Tetrahedron", 6: "Cube", 8: "Octahedron", 12: "Dodecahedron", 20: "Icosahedron"}
-
-        self.vertices, self.edges = eval("self." + shapes[numFaces] + "()")
+        self.shapes = {4: "Tetrahedron", 6: "Cube", 8: "Octahedron", 12: "Dodecahedron", 20: "Icosahedron"}
+    def get(self):
+        self.vertices, self.edges = eval("self." + self.shapes[numFaces] + "()")
 
     def Tetrahedron(self):
         self.vertices = [(1, 1, 1), (1, -1, -1), (-1, 1, -1), (-1, -1, 1)]
@@ -320,7 +343,7 @@ class Sphere(Solid):
         # side length of a surface
         self.numLatitude = numLatitude
         self.numLongitude = numLongitude
-
+    def get(self):
         # calculate a list of the coordinates of vertices
         # calculate a list of connecting vertices that form an edge
         self.vertices = []
@@ -357,9 +380,9 @@ class Curve3D(Solid):
 
 class Custom(Solid):
     def __init__(self, color, center, numFaces, sideLen):
-        # get color and center
-        super().__init__(color, center)
-
+        # get color
+        self.color = color
+    def get(self):
         # get a list of the coordinates of vertices from user input
         # get a list of connecting vertices that form an edge from user input
         self.vertices = []

@@ -135,7 +135,8 @@ class Main(object):
         self.isDroppingDown = False
 
         # text entering
-        self.textentering = False    
+        self.textentering = False 
+        self.currCard = None   
 
 
     def mousePressed(self, x, y, surface):
@@ -167,14 +168,16 @@ class Main(object):
             cam.home(self.buttonList[self.button_perspective][1])
 
         elif self.button_screenshot.isInBound(x, y):
-            filename = asksaveasfilename(initialdir = "/", defaultextension= ".jpg",
-                                            initialfile="screenshot " + str(datetime.datetime.now()))
+            #filename = asksaveasfilename(initialdir = "/", defaultextension= ".jpg",
+            #                                initialfile="screenshot " + str(datetime.datetime.now()))
+            filename = "screenshot " + str(datetime.datetime.now()) + ".jpg"
             if filename is not None:
                 pygame.image.save(surface, filename)
 
         elif self.button_export.isInBound(x,y):
-            filename = asksaveasfilename(initialdir = "/", defaultextension= ".txt",
-                                            initialfile="data " + str(datetime.datetime.now()))
+            #filename = asksaveasfilename(initialdir = "/", defaultextension= ".txt",
+                                            #initialfile="data " + str(datetime.datetime.now()))
+            filename = "data " + str(datetime.datetime.now()) + ".txt"
             if filename is not None:
                 with open(filename, 'w') as outfile:  
                     for o in solids:
@@ -225,11 +228,15 @@ class Main(object):
             
             self.scroll.setDisplayY(cards[-1].getTop())
         else:
+            poped = False
             for i in range(len(cards)):
-                poped = cards[i].inputUpdate(self.scroll, x, y, solids, i)
+                poped, self.textentering = cards[i].inputUpdate(self.scroll, x, y, solids, i)
                 if poped:
                     cards.pop(i)
                     p = i
+                    break
+                elif self.textentering:
+                    self.currCard = i
                     break
 
             if poped:
@@ -243,6 +250,10 @@ class Main(object):
                 self.scroll_content = pygame.Surface((int(self.panelWidth), int(self.scroll_length)))
                 self.scroll_content.fill(ORANGE)
                 self.scroll = Scroll(0, 80, self.panelWidth, self.height - 80, self.scroll_content)
+
+    def textEntry(self, events):
+        if self.currCard != None and self.currCard < len(cards):
+            cards[self.currCard].textUpdate(events)
 
     def mouseMotion(self, surface):
         x, y = self.pos
@@ -283,19 +294,18 @@ class Main(object):
         
 
     def keyPressed(self):
-        # when not entering text
-        
-        # cam move left/right
-        if self.keys[pygame.K_d]:
-            cam.leftRight(self.displacement)
-        if self.keys[pygame.K_a]:
-            cam.leftRight(-self.displacement)
-        
-        # cam move up/down
-        if self.keys[pygame.K_s]:
-            cam.upDown(self.displacement)
-        if self.keys[pygame.K_w]:
-            cam.upDown(-self.displacement)
+        if not self.textentering: 
+            # cam move left/right
+            if self.keys[pygame.K_d]:
+                cam.leftRight(self.displacement)
+            if self.keys[pygame.K_a]:
+                cam.leftRight(-self.displacement)
+            
+            # cam move up/down
+            if self.keys[pygame.K_s]:
+                cam.upDown(self.displacement)
+            if self.keys[pygame.K_w]:
+                cam.upDown(-self.displacement)
 
         # whe entering text
 
@@ -310,11 +320,14 @@ class Main(object):
         self.rel = pygame.mouse.get_rel()
         self.pos = pygame.mouse.get_pos()
         self.keys = pygame.key.get_pressed()
+        self.events = pygame.event.get()
         if not self.buttonList[self.button_tutorial][1]:
-            self.keyPressed()
             self.mouseMotion(surface)
             self.timerFired(time)
-        for event in pygame.event.get():
+            self.keyPressed()
+            self.textEntry(self.events)
+        
+        for event in self.events:
             # not in tutorial mode
             if not self.buttonList[self.button_tutorial][1]:
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button in [4, 5]:
