@@ -13,9 +13,9 @@ run the main.py file. Click the light bulb icon at the top-left corner and follo
 
 use pip3
 
-'''
+```
 pip3 install pygame
-'''
+```
 
 if it does not work, check
 https://www.pygame.org/wiki/GettingStarted
@@ -24,8 +24,8 @@ https://www.pygame.org/wiki/GettingStarted
 
 Try the following as custom input. Copy and pasting each list (excluding what's before ":") into vertices field and edges field. 
 
-"""
+```
 vertices: 
 
 edges: 
-"""
+```
