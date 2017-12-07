@@ -2,7 +2,7 @@
 
 This is project is created for Fall 17 Carnegie Mellon 15112: Fundamentals of Programming and Computer Science term project. 
 
-Wire Frame 3D is a 3D modelling tool that models basic 3D shapes 3D surface, and 3D curves in wire frame form. (see https://en.wikipedia.org/wiki/Wire-frame_model). It is also able to handle custom input. 
+Wire Frame 3D is a 3D modelling tool that models varies 3D shapes in wire frame form. (see https://en.wikipedia.org/wiki/Wire-frame_model). It is also able to handle custom input. 
 
 ## Usage
 
