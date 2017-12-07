@@ -13,9 +13,9 @@ run the main.py file. Click the light bulb icon at the top-left corner and follo
 
 use pip3
 
-"""
+'''
 pip3 install pygame
-"""
+'''
 
 if it does not work, check
 https://www.pygame.org/wiki/GettingStarted
